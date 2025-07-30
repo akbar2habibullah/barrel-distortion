@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Barrel Distortion Text Effect</title>
+  <title>Barrel Distortion Text Effect with CRT</title>
   <style>
     body { 
         margin: 0; 
@@ -34,7 +34,7 @@
         margin-bottom: 5px;
     }
     input[type="range"] { 
-        width: 200px; 
+        width: 180px; /* Adjusted width for better layout */
     }
     input[type="color"] {
         width: 40px;
@@ -80,20 +80,31 @@
         justify-content: flex-start;
         margin-top: 5px;
     }
+    h4 {
+        margin: 15px 0 5px 0;
+        border-bottom: 1px solid #555;
+        padding-bottom: 5px;
+    }
   </style>
 </head>
 <body>
   <canvas id="glCanvas"></canvas>
     <div class="controls">
+        <h4>Lens Effect</h4>
         <label>Distortion: <input type="range" id="distortion" min="-5" max="5" step="0.01" value="2"></label>
         <label>Zoom: <input type="range" id="zoom" min="0.5" max="10" step="0.01" value="1.5"></label>
+        
+        <h4>Text & Color</h4>
         <label>Font Size: <input type="range" id="fontSize" min="20" max="200" step="1" value="80"></label>
         <label>Line Spacing: <input type="range" id="lineSpacing" min="0.8" max="2.0" step="0.05" value="1.2"></label>
-        
-        <!-- NEW CONTROLS -->
         <label>Font Color: <input type="color" id="fontColor" value="#FFFFFF"></label>
         <label>Background: <input type="color" id="bgColor" value="#000000"></label>
-        <!-- END NEW CONTROLS -->
+
+        <!-- === NEW: CRT Effect Controls === -->
+        <h4>CRT Effect</h4>
+        <label>Noise: <input type="range" id="noiseAmount" min="0" max="0.2" step="0.005" value="0.05"></label>
+        <label>Scanlines: <input type="range" id="scanlineIntensity" min="0" max="0.5" step="0.01" value="0.15"></label>
+        <!-- === END NEW === -->
         
         <div class="text-input">
             <textarea id="textInput" placeholder="Enter multi-line text">BUT AT
@@ -101,10 +112,8 @@ LEAST
 YOU'LL</textarea>
             <div class="button-row">
                 <button id="updateText">Update Text</button>
-                <!-- NEW BUTTONS -->
                 <button id="toUpper">UPPERCASE</button>
                 <button id="toLower">lowercase</button>
-                <!-- END NEW BUTTONS -->
                 <button id="resetText">Reset</button>
                 <button id="exportPng">Export to PNG</button>
             </div>

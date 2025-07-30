@@ -1,7 +1,5 @@
 // WebGL setup
 const canvas = document.getElementById('glCanvas');
-// === MODIFIED LINE: Added { preserveDrawingBuffer: true } ===
-// This is crucial for allowing canvas.toDataURL() to capture the WebGL buffer.
 const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
 if (!gl) {
@@ -29,21 +27,12 @@ const fsSource = `
     varying vec2 vTexCoord;
     
     void main() {
-        // Center coordinates and normalize to [-1,1]
         vec2 center = vec2(0.5, 0.5);
         vec2 coord = (vTexCoord - center) * uZoom;
-        
-        // Calculate distance from center
         float dist = length(coord);
-        
-        // Apply barrel distortion formula
         float factor = 1.0 + uDistortion * dist * dist;
         vec2 distortedCoord = coord * factor;
-        
-        // Convert back to texture coordinates
         distortedCoord = distortedCoord / uZoom + center;
-        
-        // Sample texture with new coordinates
         gl_FragColor = texture2D(uSampler, distortedCoord);
     }
 `;
@@ -53,7 +42,6 @@ function compileShader(source, type) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
-    
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
         console.error('Shader compile error:', gl.getShaderInfoLog(shader));
         gl.deleteShader(shader);
@@ -90,28 +78,19 @@ const programInfo = {
 // Create buffers
 const positionBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    -1, -1,  1, -1,  -1, 1,
-    -1, 1,   1, -1,   1, 1
-]), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
 
 const texCoordBuffer = gl.createBuffer();
 gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
-gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    0, 1,  1, 1,  0, 0,
-    0, 0,  1, 1,  1, 0
-]), gl.STATIC_DRAW);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0]), gl.STATIC_DRAW);
 
 // Create texture
 function createTexture() {
     const texture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    
-    // Set texture parameters
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    
     return texture;
 }
 
@@ -121,18 +100,27 @@ const texture = createTexture();
 const textCanvas = document.createElement('canvas');
 const textCtx = textCanvas.getContext('2d');
 
-// Set canvas dimensions
-textCanvas.width = 800;
-textCanvas.height = 600;
+textCanvas.width = 512;
+textCanvas.height = 512;
 canvas.width = textCanvas.width;
 canvas.height = textCanvas.height;
 gl.viewport(0, 0, canvas.width, canvas.height);
 
+// === NEW: Helper function to convert hex color to WebGL-friendly RGB ===
+function hexToRgb(hex) {
+    let result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16) / 255,
+        g: parseInt(result[2], 16) / 255,
+        b: parseInt(result[3], 16) / 255
+    } : null;
+}
+
 // Function to wrap text
-function wrapText(context, text, maxWidth, fontSize) {
+function wrapText(context, text, maxWidth) {
     const words = text.split(' ');
     const lines = [];
-    let currentLine = words[0];
+    let currentLine = words[0] || '';
 
     for (let i = 1; i < words.length; i++) {
         const word = words[i];
@@ -148,86 +136,76 @@ function wrapText(context, text, maxWidth, fontSize) {
     return lines;
 }
 
-// Function to render text to canvas
+// === MODIFIED: Function to render text to canvas now uses color inputs ===
 function renderText(text, fontSize, lineSpacing) {
-    // Clear canvas
-    textCtx.fillStyle = '#000';
+    // Clear canvas with selected background color
+    textCtx.fillStyle = bgColorInput.value;
     textCtx.fillRect(0, 0, textCanvas.width, textCanvas.height);
     
-    // Configure text
-    textCtx.fillStyle = '#fff';
-    textCtx.font = `bold ${fontSize}px Times New Roman`;
+    // Configure text with selected font color
+    textCtx.fillStyle = fontColorInput.value;
+    textCtx.font = `bold ${fontSize}px 'Times New Roman'`;
     textCtx.textAlign = 'center';
     textCtx.textBaseline = 'middle';
     
-    // Add text shadow for better visibility
     textCtx.shadowColor = 'rgba(0, 0, 0, 0.5)';
     textCtx.shadowBlur = 4;
     textCtx.shadowOffsetX = 2;
     textCtx.shadowOffsetY = 2;
     
-    // Split text into lines
     const rawLines = text.split('\n');
     const wrappedLines = [];
+    const maxWidth = textCanvas.width * 0.9;
     
-    // Wrap each line if it's too long
-    const maxWidth = textCanvas.width * 0.9; // 90% of canvas width
     rawLines.forEach(line => {
-        if (textCtx.measureText(line).width > maxWidth) {
-            const wrapped = wrapText(textCtx, line, maxWidth, fontSize);
+        if (textCtx.measureText(line).width > maxWidth && line.includes(' ')) {
+            const wrapped = wrapText(textCtx, line, maxWidth);
             wrappedLines.push(...wrapped);
         } else {
             wrappedLines.push(line);
         }
     });
     
-    // Calculate line height and total height
     const lineHeight = fontSize * lineSpacing;
-    const totalHeight = wrappedLines.length * lineHeight;
-    const startY = (textCanvas.height - totalHeight) / 2 + fontSize / 2;
+    const totalHeight = (wrappedLines.length - 1) * lineHeight;
+    const startY = (textCanvas.height - totalHeight) / 2;
     
-    // Draw each line
     wrappedLines.forEach((line, i) => {
         textCtx.fillText(line, textCanvas.width / 2, startY + i * lineHeight);
     });
     
-    // Update WebGL texture
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
     
-    // Render WebGL scene
     render();
 }
 
-// Render function
+// === MODIFIED: Render function now uses background color ===
 function render() {
-    gl.clearColor(0, 0, 0, 1);
+    const bgColor = hexToRgb(bgColorInput.value);
+    gl.clearColor(bgColor.r, bgColor.g, bgColor.b, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     
     gl.useProgram(shaderProgram);
     
-    // Set position attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.vertexAttribPointer(programInfo.attribLocations.position, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.position);
     
-    // Set texture coordinate attribute
     gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
     gl.vertexAttribPointer(programInfo.attribLocations.texCoord, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(programInfo.attribLocations.texCoord);
     
-    // Set uniforms
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(programInfo.uniformLocations.sampler, 0);
     gl.uniform1f(programInfo.uniformLocations.distortion, parseFloat(distortionInput.value));
     gl.uniform1f(programInfo.uniformLocations.zoom, parseFloat(zoomInput.value));
     
-    // Draw
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 }
 
-// Event listeners
+// Get all control elements
 const distortionInput = document.getElementById('distortion');
 const zoomInput = document.getElementById('zoom');
 const fontSizeInput = document.getElementById('fontSize');
@@ -235,51 +213,65 @@ const lineSpacingInput = document.getElementById('lineSpacing');
 const textInput = document.getElementById('textInput');
 const updateButton = document.getElementById('updateText');
 const resetButton = document.getElementById('resetText');
-// === NEW: Get the export button ===
 const exportButton = document.getElementById('exportPng');
+// === NEW: Get new control elements ===
+const fontColorInput = document.getElementById('fontColor');
+const bgColorInput = document.getElementById('bgColor');
+const toUpperButton = document.getElementById('toUpper');
+const toLowerButton = document.getElementById('toLower');
 
+// Event Listeners for original controls
 distortionInput.addEventListener('input', render);
 zoomInput.addEventListener('input', render);
-fontSizeInput.addEventListener('input', () => {
+fontSizeInput.addEventListener('input', () => renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value));
+lineSpacingInput.addEventListener('input', () => renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value));
+updateButton.addEventListener('click', () => renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value));
+
+// === NEW: Event listeners for new controls ===
+fontColorInput.addEventListener('input', () => renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value));
+
+bgColorInput.addEventListener('input', () => {
+    document.body.style.backgroundColor = bgColorInput.value;
     renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
 });
-lineSpacingInput.addEventListener('input', () => {
+
+toUpperButton.addEventListener('click', () => {
+    textInput.value = textInput.value.toUpperCase();
     renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
 });
-updateButton.addEventListener('click', () => {
+
+toLowerButton.addEventListener('click', () => {
+    textInput.value = textInput.value.toLowerCase();
     renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
 });
+
+// === MODIFIED: Reset button now resets new controls too ===
 resetButton.addEventListener('click', () => {
-    textInput.value = "BUT AT\nLEAST\nYOU'LL"; // Reset to original text
-    fontSizeInput.value = 120;
+    textInput.value = "BUT AT\nLEAST\nYOU'LL";
+    fontSizeInput.value = 80;
     lineSpacingInput.value = 1.2;
     distortionInput.value = 2;
     zoomInput.value = 1.5;
+    // Reset colors
+    fontColorInput.value = '#FFFFFF';
+    bgColorInput.value = '#000000';
+    document.body.style.backgroundColor = bgColorInput.value;
+
     renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
 });
 
-// === NEW: Event listener and function for exporting to PNG ===
+// Event listener for exporting to PNG
 function exportToPNG() {
-    // We call render() one last time to ensure the canvas is up-to-date
-    // with the very latest slider values before exporting.
-    render();
-
-    // Create a temporary link element to trigger the download
+    render(); // Ensure canvas is up-to-date
     const link = document.createElement('a');
-    
-    // Get the data URL of the canvas content
     link.href = canvas.toDataURL('image/png');
-    
-    // Set a default filename for the download
     link.download = 'barrel-distortion-effect.png';
-    
-    // Programmatically click the link to start the download
-    document.body.appendChild(link); // Required for Firefox
+    document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 }
-
 exportButton.addEventListener('click', exportToPNG);
 
-// Initial render
+// Initial setup and render
+document.body.style.backgroundColor = bgColorInput.value;
 renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);

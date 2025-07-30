@@ -6,45 +6,80 @@
   <title>Barrel Distortion Text Effect</title>
   <style>
     body { 
-  margin: 0; overflow: hidden; background: #000; font-family: 'Times New Roman'; }
-        canvas { display: block; margin: auto; height: 100vh;}
-        .controls {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 15px;
-            border-radius: 5px;
-            max-width: 300px;
-        }
-        input { width: 200px; margin: 5px 0; }
-        button { background: #4CAF50; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; margin-top: 5px; }
-        button:hover { background: #45a049; }
-        textarea {
-            width: 200px;
-            height: 80px;
-            margin-right: 5px;
-            padding: 5px;
-            border-radius: 4px;
-            border: 1px solid #ccc;
-            background: rgba(255,255,255,0.9);
-            color: #000;
-            resize: vertical;
-            text-align: justify;
-        }
-        .text-input {
-            display: flex;
-            flex-direction: column;
-            margin-top: 10px;
-        }
-        .button-row {
-            display: flex;
-            flex-wrap: wrap; /* Allow buttons to wrap */
-            gap: 5px; /* Add space between buttons */
-            justify-content: flex-start;
-            margin-top: 5px;
-        }
+        margin: 0; 
+        overflow: hidden; 
+        background: #000; /* Default, will be updated by JS */
+        font-family: 'Times New Roman', serif; 
+        transition: background-color 0.3s;
+    }
+    canvas { 
+        display: block; 
+        margin: auto; 
+        height: 100vh;
+    }
+    .controls {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 15px;
+        border-radius: 5px;
+        max-width: 300px;
+    }
+    .controls label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    input[type="range"] { 
+        width: 200px; 
+    }
+    input[type="color"] {
+        width: 40px;
+        height: 25px;
+        padding: 0;
+        border: 1px solid #555;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+    button { 
+        background: #4CAF50; 
+        color: white; 
+        border: none; 
+        padding: 8px 12px; 
+        border-radius: 4px; 
+        cursor: pointer; 
+        margin-top: 5px; 
+    }
+    button:hover { 
+        background: #45a049; 
+    }
+    textarea {
+        width: 100%;
+        box-sizing: border-box;
+        height: 80px;
+        padding: 5px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        background: rgba(255,255,255,0.9);
+        color: #000;
+        resize: vertical;
+        text-align: justify;
+    }
+    .text-input {
+        display: flex;
+        flex-direction: column;
+        margin-top: 10px;
+    }
+    .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: flex-start;
+        margin-top: 5px;
+    }
   </style>
 </head>
 <body>
@@ -54,17 +89,27 @@
         <label>Zoom: <input type="range" id="zoom" min="0.5" max="10" step="0.01" value="1.5"></label>
         <label>Font Size: <input type="range" id="fontSize" min="20" max="200" step="1" value="80"></label>
         <label>Line Spacing: <input type="range" id="lineSpacing" min="0.8" max="2.0" step="0.05" value="1.2"></label>
+        
+        <!-- NEW CONTROLS -->
+        <label>Font Color: <input type="color" id="fontColor" value="#FFFFFF"></label>
+        <label>Background: <input type="color" id="bgColor" value="#000000"></label>
+        <!-- END NEW CONTROLS -->
+        
         <div class="text-input">
             <textarea id="textInput" placeholder="Enter multi-line text">BUT AT
 LEAST
 YOU'LL</textarea>
             <div class="button-row">
                 <button id="updateText">Update Text</button>
+                <!-- NEW BUTTONS -->
+                <button id="toUpper">UPPERCASE</button>
+                <button id="toLower">lowercase</button>
+                <!-- END NEW BUTTONS -->
                 <button id="resetText">Reset</button>
                 <button id="exportPng">Export to PNG</button>
             </div>
         </div>
     </div>
-    <script src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>

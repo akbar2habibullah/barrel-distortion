@@ -1,6 +1,8 @@
 // WebGL setup
 const canvas = document.getElementById('glCanvas');
-const gl = canvas.getContext('webgl');
+// === MODIFIED LINE: Added { preserveDrawingBuffer: true } ===
+// This is crucial for allowing canvas.toDataURL() to capture the WebGL buffer.
+const gl = canvas.getContext('webgl', { preserveDrawingBuffer: true });
 
 if (!gl) {
     alert('WebGL not supported');
@@ -120,8 +122,8 @@ const textCanvas = document.createElement('canvas');
 const textCtx = textCanvas.getContext('2d');
 
 // Set canvas dimensions
-textCanvas.width = screen.availWidth;
-textCanvas.height = screen.availHeight;
+textCanvas.width = 800;
+textCanvas.height = 600;
 canvas.width = textCanvas.width;
 canvas.height = textCanvas.height;
 gl.viewport(0, 0, canvas.width, canvas.height);
@@ -233,6 +235,8 @@ const lineSpacingInput = document.getElementById('lineSpacing');
 const textInput = document.getElementById('textInput');
 const updateButton = document.getElementById('updateText');
 const resetButton = document.getElementById('resetText');
+// === NEW: Get the export button ===
+const exportButton = document.getElementById('exportPng');
 
 distortionInput.addEventListener('input', render);
 zoomInput.addEventListener('input', render);
@@ -246,13 +250,36 @@ updateButton.addEventListener('click', () => {
     renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
 });
 resetButton.addEventListener('click', () => {
-    textInput.value = "Barrel Distortion\nText Effect\nWebGL Demo";
-    fontSizeInput.value = 60;
+    textInput.value = "BUT AT\nLEAST\nYOU'LL"; // Reset to original text
+    fontSizeInput.value = 120;
     lineSpacingInput.value = 1.2;
-    distortionInput.value = 0.3;
-    zoomInput.value = 1;
+    distortionInput.value = 2;
+    zoomInput.value = 1.5;
     renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
 });
+
+// === NEW: Event listener and function for exporting to PNG ===
+function exportToPNG() {
+    // We call render() one last time to ensure the canvas is up-to-date
+    // with the very latest slider values before exporting.
+    render();
+
+    // Create a temporary link element to trigger the download
+    const link = document.createElement('a');
+    
+    // Get the data URL of the canvas content
+    link.href = canvas.toDataURL('image/png');
+    
+    // Set a default filename for the download
+    link.download = 'barrel-distortion-effect.png';
+    
+    // Programmatically click the link to start the download
+    document.body.appendChild(link); // Required for Firefox
+    link.click();
+    document.body.removeChild(link);
+}
+
+exportButton.addEventListener('click', exportToPNG);
 
 // Initial render
 renderText(textInput.value, fontSizeInput.value, lineSpacingInput.value);
